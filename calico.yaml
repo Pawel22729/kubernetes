@@ -1,0 +1,357 @@
+# This ConfigMap is used to configure a self-hosted Calico installation.
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: calico-config
+  namespace: kube-system
+data:
+  # Configure this with the location of your etcd cluster.
+  etcd_endpoints: "https://127.0.0.1:2379"
+
+  # Configure the Calico backend to use.
+  calico_backend: "bird"
+
+  # The CNI network configuration to install on each node.
+  cni_network_config: |-
+    {
+        "name": "k8s-pod-network",
+        "type": "calico",
+        "etcd_endpoints": "__ETCD_ENDPOINTS__",
+        "etcd_key_file": "__ETCD_KEY_FILE__",
+        "etcd_cert_file": "__ETCD_CERT_FILE__",
+        "etcd_ca_cert_file": "__ETCD_CA_CERT_FILE__",
+        "log_level": "info",
+        "ipam": {
+            "type": "calico-ipam"
+        },
+        "policy": {
+            "type": "k8s",
+            "k8s_api_root": "https://__KUBERNETES_SERVICE_HOST__:__KUBERNETES_SERVICE_PORT__",
+            "k8s_auth_token": "__SERVICEACCOUNT_TOKEN__"
+        },
+        "kubernetes": {
+            "kubeconfig": "__KUBECONFIG_FILEPATH__"
+        }
+    }
+
+  # The default IP Pool to be created for the cluster.
+  # Pod IP addresses will be assigned from this pool.
+  ippool.yaml: |
+      apiVersion: v1
+      kind: ipPool
+      metadata:
+        cidr: 192.168.0.0/16
+      spec:
+        nat-outgoing: true
+
+  # If you're using TLS enabled etcd uncomment the following.
+  # You must also populate the Secret below with these files.
+  etcd_ca: "/calico-secrets/etcd-ca"
+  etcd_cert: "/calico-secrets/etcd-cert"
+  etcd_key: "/calico-secrets/etcd-key"
+
+---
+
+# The following contains k8s Secrets for use with a TLS enabled etcd cluster.
+# For information on populating Secrets, see http://kubernetes.io/docs/user-guide/secrets/
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: calico-etcd-secrets
+  namespace: kube-system
+data:
+  # Populate the following files with etcd TLS configuration if desired, but leave blank if
+  # not using TLS for etcd.
+  # This self-hosted install expects three files with the following names.  The values
+  # should be base64 encoded strings of the entire contents of each file.
+  etcd-ca: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlDd2pDQ0FhcWdBd0lCQWdJQkFEQU5CZ2txaGtpRzl3MEJBUXNGQURBU01SQXdEZ1lEVlFRREV3ZGxkR05rDQpMV05oTUI0WERURTVNRFF4TWpJd05EZ3hORm9YRFRJNU1EUXdPVEl3TkRneE5Gb3dFakVRTUE0R0ExVUVBeE1IDQpaWFJqWkMxallUQ0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUs3eDgzQkg1aFBPDQprRVNhVTg3MWNIYWt1OTYza1FQemR5Wmd2d2YzdTZPdjJkeXRTVkU4U1RsbHFQZEhONFA3dFhEb0NtcVdzRWozDQprUjUrNmdzN0R1Uk1vVkJORlhYaEpnSm1rUURTRWtVWmNOMHdoNWhwWTRNbm13c3RBc2ZyaW5neDlMOHE3elZiDQpyQ08rbk54OWs2dUFFTTJYSFhUUVQrL211ODFCOVUyUmovenU1dW1KMzcxckZxRFlsektQemhhcEdUWnZLOVlJDQpXa2dWWDlCTmRMY3A2MnlvSkVZVjZVeEdaYjdlUjdVYVhmTlRySVpPcmlsUE5uRWM4ak1kaUduUC9EU1JuekFSDQpiUHlaWFZlbGYvSTBPdHUzTjBJaFl3aXFudzB1RDRVNWh1N25qZGJvVEtaYjUzNmdNVjRUT1EwN2I3MVcwSldUDQpyK084bU5qL01NTUNBd0VBQWFNak1DRXdEZ1lEVlIwUEFRSC9CQVFEQWdLa01BOEdBMVVkRXdFQi93UUZNQU1CDQpBZjh3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCQUVjMjBGU3JnVkVLbHBhT2RETjZZWW9LYWtydlIySmR4TU1yDQpxcVBMb2dyU0FKUi9GZHdMaklUYW83N21JWDI4ZndYRGJTdFppQnRoSXQ0S0RwU3J3Zm5WNE1Tbk1xaFZwaFhEDQo5Rmg4bFFvb3JhSnB5eXRhL1IzbjVOUkEybjVvWjB4MUlFZU45NmlyRFUwa1cwTHBlQXBzVXpHdkdxVjRvU0s4DQpXV3FVV2xRNm83ZTZsTlJVSFJGejR1N2xJR0h0T0ZXT0kzZ3ptRzk0OTlGQkExbVh2NTQrRU1pT09rR2xvVU83DQpVNjFJaUpwWmpkTU5TZ01JWU9yaEQ5U2ZFV214RFg0cnAzdVpRRmxaWE1Ud1UzbHkzTFdjYnFrckI0RXc3UnRmDQp6eXVRUjVzeWxMZE1CQkcyTWxsNUVZVzFDUEZJMTUrTkYzdWVidHZNM2IzL2JMaXczemM9DQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tDQo=
+  etcd-key: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQ0KTUlJRW9nSUJBQUtDQVFFQW82N3k0dkx2bmdKQVVDMUdIUGlaYW9IWXpKaTQ2bmw1ZUNWZi9aMEpFTHBnQkswQw0KMlRhdms5SEtOZ0ZEOW1GNTlLWGdVRFYySzMyZmU4RFo2QUNCV0V0Nk9NdU0xZGRRT1REZlJ0eXJGTG5wVDNUQw0KTTFoMUFoNVF3L2RVS0VXMy9YYUpFQkhrS1NxSDE5Qkd4bDhhcE9YM0swcElDYmVWdGhQK0doVXA3ZVh2NWt2Lw0KdGQ2Mk1IZForWk55bXkxOW5pU3orRGNHelRBcnkvQVJpTmUxU1NLQUprTW5ZYm0wMkxkNDlwRTJaNDBtdXNWNQ0KWXJKR0dxWXZlSDhlVUpQK09iSWc3QjVjOVdManNhMDY2OG9FRURpSzlDRUVZdjdwQ3RVVlZ4OFk0VGhsOFZmMw0KS0pRckJTSWkwOTNMVGdDeVRheXpVaE1XbW43dEw0VHpXc1h4YndJREFRQUJBb0lCQUQvVjRBWGdodERSd2ZGQw0KNXVBdmwrMXd2SE4yY0UrSmxuVGo1cDdMR3BqNmhxM3NKM3M5RjVhSHI5d0YvRkpmUzZlODlWRnl1Q1pYOU5YWA0KcldRTXBtVWY4b2VwNHNBWEc4TmlLd0hBMTd2YWtZSWFZQTZVUmZYUWl1RVNXVERubDh6eTZKdHF6dGU3TFlWZQ0KUmV2aGRVdXdJQWd6RFFzMUhOOEl4d1czRVVZazBoRXY1cnVVNE9qOVg4K0ZJUnVJMXVILzU1d3IxOVM0S21KTw0KUUdvdXJyb3Q5VVRVY3RjbHExMkhxY3M2UGxtNmhUUXB3TFp2bG1vQnROMDNWMEZDUXBUakMvd1pLQTJDNFM0UQ0KNFFjUE9qU1ZXRDlsdHZhZ29weVp0SWFKZ3czdXJEcmNTMEJOT2ZubjlhcTRtV2FUSzRwZWxLekFmWUtTdFJsZQ0KN04wTEtra0NnWUVBenBENTc0R0RLOC9yRkpta0FUaWgvS21GdlQ1RGxydlFsWkVOcjNUWEViR1RHQUd0Z0pILw0KQWZOMFVEVmVhekQrLzBlc2NWNnNXTnVHVGJpOXdlVHR6dTVMRXdtOSt5NW5ibktzV1A1ZFJ4RFdtWUFBSWNNLw0KMG1uVEdIY01hL2lHNnp0d0hFeXM1eTRtRmdxaytIYndOeEFpUnoxTHFFemNzWU81ZEJualEyc0NnWUVBeXRyTg0KL2huSFpmcnNIZEtNcXg3cXlzdWduczRIVHovcS84T3F3Yjg4V3diMk5QdXNBQzI1aUNVazlTU2pKZURyWDhOUg0KRW9LNUd1OE9Hc3FLWU5UaDdwbDJGdS8wOHNobnZBZXZLN1RLb0VEaHlpU3I3S0JwV1VObm1XbmZqc0dYNkNGbg0KRVVwTG4zbW4zcEN3VXVJb0RFbU1lWndJcytvREVrdEZJN29vencwQ2dZQTY1eHhlTDVBMzdoSWF6YlQycEMrTQ0KM01wR0xIc1pnSFQ2TVdLMXBadXViL1NCNC9pVnNRd0dnbVdvZVk5ekFZVzFSYnJtbVJpTVBnME9ISi8vcWtnbA0KdWMydW9CaU1oNjcyejd4VnBETDFFTmdnN1Y4Y1FaRHhienZDdmkvTW1oSGZBaFAxL2VkUUJOalhjREdhcUUvWA0KWThKaWpoZ0U1ZVlJdUljcGxEZzZBUUtCZ0drbGRUVEt3L0oyVjhFMWk3aC9OQkNkNzhtZzNXVVVxb2ljTVh4dg0KMWFjUk9ybEg0bVhOVGFmbUtQdndXNmljcHlSaUp6bkRESk9MYWZJMUhma0hIM3ovaXBobEZNQnJaR213U2ZvTA0Kb2lQaXZhWjd6Nm05bEIyeXRKWnVySFJnb0k2d0VhNkNwaVFwZVB3Q1g0TDJ1dTl6aUI3WTVDSHRvRjN4S2d0VQ0KeVNaWkFvR0FHdDdoMDUxWWJrL2FMWC95bzJHNW5iVjQrMjFPTDZmZGUvZU1CM0E4anVvT3V1bVhneG5tbzZrRA0KNm5ydytSTlFxUFAxYm9QY1l6MTB3dzk3Mk83R0ZuZ1l4QTdTa0FQV2U2TzcxZFBaaHJKTU9KcTF4UklSbmxSQg0KZ1lXdVREUENYSk1wZDlTV0g2REZTSlRwMGk5Z1QvQlJhZkxNTVZPRitRZDh3UXA1RkM4PQ0KLS0tLS1FTkQgUlNBIFBSSVZBVEUgS0VZLS0tLS0NCg==
+  etcd-cert: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tDQpNSUlERmpDQ0FmNmdBd0lCQWdJSUZOMHVhaUpiai80d0RRWUpLb1pJaHZjTkFRRUxCUUF3RWpFUU1BNEdBMVVFDQpBeE1IWlhSalpDMWpZVEFlRncweE9UQTBNVEl5TURRNE1UUmFGdzB5TURBME1URXlNRFE0TVRSYU1CTXhFVEFQDQpCZ05WQkFNVENHMXBibWxyZFdKbE1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBDQpvNjd5NHZMdm5nSkFVQzFHSFBpWmFvSFl6Smk0Nm5sNWVDVmYvWjBKRUxwZ0JLMEMyVGF2azlIS05nRkQ5bUY1DQo5S1hnVURWMkszMmZlOERaNkFDQldFdDZPTXVNMWRkUU9URGZSdHlyRkxucFQzVENNMWgxQWg1UXcvZFVLRVczDQovWGFKRUJIa0tTcUgxOUJHeGw4YXBPWDNLMHBJQ2JlVnRoUCtHaFVwN2VYdjVrdi90ZDYyTUhkWitaTnlteTE5DQpuaVN6K0RjR3pUQXJ5L0FSaU5lMVNTS0FKa01uWWJtMDJMZDQ5cEUyWjQwbXVzVjVZckpHR3FZdmVIOGVVSlArDQpPYklnN0I1YzlXTGpzYTA2NjhvRUVEaUs5Q0VFWXY3cEN0VVZWeDhZNFRobDhWZjNLSlFyQlNJaTA5M0xUZ0N5DQpUYXl6VWhNV21uN3RMNFR6V3NYeGJ3SURBUUFCbzI4d2JUQU9CZ05WSFE4QkFmOEVCQU1DQmFBd0hRWURWUjBsDQpCQll3RkFZSUt3WUJCUVVIQXdFR0NDc0dBUVVGQndNQ01Ed0dBMVVkRVFRMU1ET0NDRzFwYm1scmRXSmxnZ2xzDQpiMk5oYkdodmMzU0hCTUNvWTJTSEJIOEFBQUdIRUFBQUFBQUFBQUFBQUFBQUFBQUFBQUV3RFFZSktvWklodmNODQpBUUVMQlFBRGdnRUJBSHRkSGRBZURmVENLSEVsREhnZ3YvK0hZZVlWbitUZXVKWnhLdVBiYlY1Y1dFNmhUdlJ0DQoxNUtLbzF5eGEzYjUzRVBkTEtqWEQxRVF5c3c2WnhORGxzWkYreFV0T0tEbFBMbkVsRCs0TDBaQzN0K3F3TFM5DQpIaGY0bExlQmU2MEorZng5M2VvRmxSUEt4R1FHdGJBU3p1TWZSTnVreTlFOHZkbU5BZHM4RzByd2lZaFRDRXVmDQowY0lUNGQxSHVwbDlmRE9Pa256QWJmcGdyY0c2bVZWeHAwZlNXQitLUFBGZnVQMTBNUnZkUzF4NFlTNGFPcVhnDQpzd2d1bHFiOWhqQVVYTS9ubjM3QjZYQUN0cUdZZ3NobnhuMkVZeS9Fd041ZXgwWWtWS1VTenRwbW1aV0RuU2Q0DQoycDVOL2dvbkRuTFE5L0dGNThQbzJrbFhCWWk5dWhCVmorRT0NCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0NCg==
+
+---
+
+# This manifest installs the calico/node container, as well
+# as the Calico CNI plugins and network config on
+# each master and worker node in a Kubernetes cluster.
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: calico-node
+  namespace: kube-system
+  labels:
+    k8s-app: calico-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: |
+          [{"key": "dedicated", "value": "master", "effect": "NoSchedule" },
+           {"key":"CriticalAddonsOnly", "operator":"Exists"}]
+    spec:
+      hostNetwork: true
+      containers:
+        # Runs calico/node container on each Kubernetes node.  This
+        # container programs network policy and routes on each
+        # host.
+        - name: calico-node
+          image: quay.io/calico/node:v1.0.2
+          env:
+            # The location of the Calico etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # Choose the backend to use.
+            - name: CALICO_NETWORKING_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: calico_backend
+            # Disable file logging so `kubectl logs` works.
+            - name: CALICO_DISABLE_FILE_LOGGING
+              value: "true"
+            # Set Felix endpoint to host default action to ACCEPT.
+            - name: FELIX_DEFAULTENDPOINTTOHOSTACTION
+              value: "ACCEPT"
+            # Don't configure a default pool.  This is done by the Job
+            # below.
+            - name: NO_DEFAULT_POOLS
+              value: "true"
+            - name: FELIX_LOGSEVERITYSCREEN
+              value: "info"
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+            # Auto-detect the BGP IP address.
+            - name: IP
+              value: ""
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /lib/modules
+              name: lib-modules
+              readOnly: true
+            - mountPath: /var/run/calico
+              name: var-run-calico
+              readOnly: false
+            - mountPath: /calico-secrets
+              name: etcd-certs
+        # This container installs the Calico CNI binaries
+        # and CNI network config file on each node.
+        - name: install-cni
+          image: calico/cni:v1.5.6
+          command: ["/install-cni.sh"]
+          env:
+            # The location of the Calico etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # The CNI network config to install on each node.
+            - name: CNI_NETWORK_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: cni_network_config
+          volumeMounts:
+            - mountPath: /host/opt/cni/bin
+              name: cni-bin-dir
+            - mountPath: /host/etc/cni/net.d
+              name: cni-net-dir
+            - mountPath: /calico-secrets
+              name: etcd-certs
+      volumes:
+        # Used by calico/node.
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules
+        - name: var-run-calico
+          hostPath:
+            path: /var/run/calico
+        # Used to install CNI.
+        - name: cni-bin-dir
+          hostPath:
+            path: /opt/cni/bin
+        - name: cni-net-dir
+          hostPath:
+            path: /etc/cni/net.d
+        # Mount in the etcd TLS secrets.
+        - name: etcd-certs
+          secret:
+            secretName: calico-etcd-secrets
+
+---
+
+# This manifest deploys the Calico policy controller on Kubernetes.
+# See https://github.com/projectcalico/k8s-policy
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: calico-policy-controller
+  namespace: kube-system
+  labels:
+    k8s-app: calico-policy
+  annotations:
+    scheduler.alpha.kubernetes.io/critical-pod: ''
+    scheduler.alpha.kubernetes.io/tolerations: |
+      [{"key": "dedicated", "value": "master", "effect": "NoSchedule" },
+       {"key":"CriticalAddonsOnly", "operator":"Exists"}]
+spec:
+  # The policy controller can only have a single active instance.
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      name: calico-policy-controller
+      namespace: kube-system
+      labels:
+        k8s-app: calico-policy
+    spec:
+      # The policy controller must run in the host network namespace so that
+      # it isn't governed by policy that would prevent it from working.
+      hostNetwork: true
+      containers:
+        - name: calico-policy-controller
+          image: calico/kube-policy-controller:v0.5.2
+          env:
+            # The location of the Calico etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+            # The location of the Kubernetes API.  Use the default Kubernetes
+            # service for API access.
+            - name: K8S_API
+              value: "https://kubernetes.default:443"
+            # Since we're running in the host namespace and might not have KubeDNS
+            # access, configure the container's /etc/hosts to resolve
+            # kubernetes.default to the correct service clusterIP.
+            - name: CONFIGURE_ETC_HOSTS
+              value: "true"
+          volumeMounts:
+            # Mount in the etcd TLS secrets.
+            - mountPath: /calico-secrets
+              name: etcd-certs
+      volumes:
+        # Mount in the etcd TLS secrets.
+        - name: etcd-certs
+          secret:
+            secretName: calico-etcd-secrets
+
+---
+
+## This manifest deploys a Job which performs one time
+# configuration of Calico
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-calico
+  namespace: kube-system
+  labels:
+    k8s-app: calico
+spec:
+  template:
+    metadata:
+      name: configure-calico
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: |
+          [{"key": "dedicated", "value": "master", "effect": "NoSchedule" },
+           {"key":"CriticalAddonsOnly", "operator":"Exists"}]
+    spec:
+      hostNetwork: true
+      restartPolicy: OnFailure
+      containers:
+        # Writes basic configuration to datastore.
+        - name: configure-calico
+          image: calico/ctl:v1.0.2
+          args:
+          - apply
+          - -f
+          - /etc/config/calico/ippool.yaml
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+            # Mount in the etcd TLS secrets.
+            - mountPath: /calico-secrets
+              name: etcd-certs
+          env:
+            # The location of the etcd cluster.
+            - name: ETCD_ENDPOINTS
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_endpoints
+            # Location of the CA certificate for etcd.
+            - name: ETCD_CA_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_ca
+            # Location of the client key for etcd.
+            - name: ETCD_KEY_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_key
+            # Location of the client certificate for etcd.
+            - name: ETCD_CERT_FILE
+              valueFrom:
+                configMapKeyRef:
+                  name: calico-config
+                  key: etcd_cert
+      volumes:
+        - name: config-volume
+          configMap:
+            name: calico-config
+            items:
+            - key: ippool.yaml
+              path: calico/ippool.yaml
+        # Mount in the etcd TLS secrets.
+        - name: etcd-certs
+          secret:
+            secretName: calico-etcd-secrets
