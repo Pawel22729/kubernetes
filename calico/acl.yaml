@@ -1,0 +1,14 @@
+kind: NetworkPolicy
+apiVersion: extensions/v1beta1
+metadata:
+  name: access-front
+  namespace: pablo-namespace
+spec:
+  podSelector:
+    matchLabels:
+      run: back
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+            run: front

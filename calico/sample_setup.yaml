@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front
+  namespace: pablo-namespace
+  labels:
+    app: front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front
+  template:
+    metadata:
+      labels:
+        app: front
+    spec:
+      containers:
+      - name: front
+        image: httpd:2.4
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: back
+  namespace: pablo-namespace
+  labels:
+    app: back
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: back
+  template:
+    metadata:
+      labels:
+        app: back
+    spec:
+      containers:
+      - name: back
+        image: mysql:5.6
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "pablo"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: pablo-namespace
+  name: front-service
+spec:
+  selector:
+    app: front
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  namespace:
+  name: back-service
+spec:
+  selector:
+    app: back
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 3306
