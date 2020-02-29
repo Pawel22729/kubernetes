@@ -1,0 +1,50 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: graylog
+  labels:
+    service: graylog
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        service: graylog
+    spec:
+      containers:
+      - name: graylog3
+        image: graylog/graylog:3.2
+        env:
+        - name: GRAYLOG_PASSWORD_SECRET
+          value: secret
+        - name: GRAYLOG_ROOT_PASSWORD_SHA2
+          value: 2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b
+        - name: GRAYLOG_HTTP_EXTERNAL_URI
+          value: http://your_ip_address:30003/
+        - name: GRAYLOG_ELASTICSEARCH_HOSTS
+          value: http://es6:9200
+        - name: GRAYLOG_MONGODB_URI
+          value: mongodb://mongo:27017/graylog
+        ports:
+        - containerPort: 9000
+        - containerPort: 12201
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graylog3
+spec:
+  type: NodePort
+  selector:
+    service: graylog
+  ports:
+  - name: "9000"
+    port: 9000
+    targetPort: 9000
+    nodePort: 30003
+  - name: "12201"
+    port: 12201
+    targetPort: 12201
+    nodePort: 30004
