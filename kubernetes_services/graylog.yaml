@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: graylog-master
+  namespace: testing-namespace
+spec:
+  selector:
+    matchLabels:
+      app: graylog
+  replicas: 1
+  template:
+    metadata:
+      namespace:      
+      labels:
+        app: graylog
+    spec:
+      containers:
+      - name: master
+        image: graylog/graylog:3.2
+        # resources:
+        #   requests:
+        #     cpu: 100m
+        #     memory: 100Mi
+        ports:
+          - containerPort: 9000
+          - containerPort: 12201
+          - containerPort: 1514
+        env:
+          - name: GRAYLOG_HTTP_EXTERNAL_URI
+            value: "http://192.168.99.100:30439/"
+          - name: GRAYLOG_PASSWORD_SECRET
+            value: "eZoHai8aev3eoGee"
+          - name: GRAYLOG_ROOT_PASSWORD_SHA2
+            value: "0b122eb1756ed956bf0f308e17a50c2c141015796ed82307e76a4cb3281b51c2"
+          - name: GRAYLOG_MONGODB_URI
+            value: "mongodb://mongo-master:27017/graylog"  
+          - name: GRAYLOG_ELASTICSEARCH_HOSTS
+            value: "http://elastic-master:9200"
+          
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graylog-master
+  namespace: testing-namespace
+spec:
+  ports:
+  - port: 12201
+    name: "12201"
+    protocol: TCP
+    targetPort: 12201
+  - port: 1514
+    name: "1514"
+    protocol: TCP
+    targetPort: 1514
+  selector:
+    app: graylog
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graylog-master-svc
+  namespace: testing-namespace
+spec:
+  ports:
+  - port: 9000
+    name: "9000"
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: graylog
+  type: NodePort
+    

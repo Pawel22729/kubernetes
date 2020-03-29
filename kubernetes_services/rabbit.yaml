@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: rabit-master
+  namespace: testing-namespace
+spec:
+  selector:
+    matchLabels:
+      app: rabit
+  replicas: 1
+  template:
+    metadata:
+      namespace:      
+      labels:
+        app: rabit
+    spec:
+      containers:
+      - name: master
+        image: rabbitmq
+        # resources:
+        #   requests:
+        #     cpu: 100m
+        #     memory: 100Mi
+        ports:
+        - containerPort: 5672
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabit-master
+  namespace: testing-namespace
+spec:
+  ports:
+  - port: 5672
+    protocol: TCP
+    targetPort: 5672
+  selector:
+    app: rabit
+  type: ClusterIP
+    

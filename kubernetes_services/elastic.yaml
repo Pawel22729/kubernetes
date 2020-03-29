@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: elastic-master
+  namespace: testing-namespace
+spec:
+  selector:
+    matchLabels:
+      app: elastic
+  replicas: 1
+  template:
+    metadata:
+      namespace: testing-namespace       
+      labels:
+        app: elastic
+    spec:
+      initContainers:
+        - name: set-vm-max-map-count
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: ['sysctl', '-w', 'vm.max_map_count=262144']
+          securityContext:
+            privileged: true
+      containers:
+      - name: master
+        image: elasticsearch:6.8.7
+        # resources:
+        #   requests:
+        #     cpu: 100m
+        #     memory: 100Mi
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-master
+  namespace: testing-namespace
+spec:
+  ports:
+  - port: 9200
+    name: "9200"
+    protocol: TCP
+    targetPort: 9200
+  - port: 9300
+    name: "9300"
+    protocol: TCP
+    targetPort: 9300    
+  selector:
+    app: elastic
+  type: ClusterIP
+    

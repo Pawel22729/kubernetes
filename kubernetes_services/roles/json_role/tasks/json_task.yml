@@ -1,0 +1,4 @@
+---
+- name: Parse YML to JSON
+  debug:
+    var: "{{ yml_var | to_json }}"
