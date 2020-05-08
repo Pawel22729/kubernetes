@@ -6,6 +6,6 @@ spec:
   ports:	
   - port: 8888	
     targetPort: 80
-    type: NodePort    
+  type: NodePort    
   selector:	
     app: nginx
